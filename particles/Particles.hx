@@ -153,7 +153,7 @@ class ParticleEmitter {
 
         _temp_speed = new Point();
             
-            //apply defaults 
+        //apply defaults
         apply(template);
     }
 
@@ -286,7 +286,7 @@ class ParticleEmitter {
         particle_cache = null;
     }
 
-    public function emit(t:Float){
+    public function emit(t : Float){
         duration = t;
         active = true;
         emit_last = 0;
@@ -297,6 +297,8 @@ class ParticleEmitter {
 
         if(duration != -1) {
             finish_time = haxe.Timer.stamp() + duration;
+        }else{
+            finish_time = -1;
         }
     } 
 
@@ -373,7 +375,8 @@ class ParticleEmitter {
         }
 
         var _point_speed = speed + speed_random * random_1_to_1();
-            particle.speed.setTo(_point_speed, _point_speed);
+        particle.speed.setTo(_point_speed, _point_speed);
+        trace("speed: "+particle.speed.x+" "+particle.speed.y);
 
         particle.direction.x = direction_vector.x * particle.speed.x;
         particle.direction.y = direction_vector.y * particle.speed.y;
@@ -447,7 +450,8 @@ class ParticleEmitter {
                 }
             }
 
-            if( duration != -1 && emit_timer > finish_time ){
+            if(finish_time != -1 &&
+               (duration != -1 && emit_timer > finish_time) ){
                 stop();
             }
 
@@ -491,10 +495,8 @@ class ParticleEmitter {
                 current_particle.draw_size.setTo( xx, yy );
 
             } else {
-              //TODO: killing
                 current_particle.active = false;
                 current_particle.sprite.visible = false;
-
             }
 
                 //now transfer the updated info to the visuals
