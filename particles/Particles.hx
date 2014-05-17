@@ -1,5 +1,6 @@
 package particles;
 
+import flash.geom.Rectangle;
 import flash.display.Bitmap;
 import flash.display.BitmapData;
 import flash.display.Sprite;
@@ -96,9 +97,7 @@ class ParticleEmitter {
 
         //emitter properties
     public var particle_image : BitmapData = null;
-    public var pos_value : Point;
-    public var pos_offset : Point;
-    public var pos_random : Point;
+    public var emiterShape : Rectangle;
     public var emit_time : Float;
     /* direction of emmiter, in degrees*/
     public var direction : Float;
@@ -106,7 +105,6 @@ class ParticleEmitter {
     public var gravity : Point;
 
     public var zrotation : Float = 0;
-    public var _position : Point;
 
         //todo
     public var radius : Float = 50;
@@ -146,6 +144,7 @@ class ParticleEmitter {
 
         particles = new Array<Particle>();
         particle_cache = new Array<Sprite>();
+        emiterShape = new Rectangle(particle_system.pos.x, particle_system.pos.y, 0, 0);
  
         emit_timer = 0;
         emit_last = 0;
@@ -217,20 +216,17 @@ class ParticleEmitter {
             end_rotation_random = 360;
 
         (_template.rotation_offset != null) ?
-            rotation_offset = _template.rotation_offset : 
+            rotation_offset = _template.rotation_offset :
             rotation_offset = 0;
 
-        (_template.pos != null) ?
-            _position = _template.pos : 
-            _position = new Point();
+        if(_template.emiter_shape != null)
+            emiterShape.setTo(particle_system.pos.x + _template.emiter_shape.x,
+                              particle_system.pos.y + _template.emiter_shape.y,
+                              _template.emiter_shape.width, _template.emiter_shape.height);
+        else
+            emiterShape.setTo(particle_system.pos.x, particle_system.pos.x,
+                              0, 0);
 
-        (_template.pos_offset != null) ?
-            pos_offset = _template.pos_offset : 
-            pos_offset = new Point();
-
-        (_template.pos_random != null) ?
-            pos_random = _template.pos_random : 
-            pos_random = new Point(0,0);
 
         (_template.gravity != null) ?
             gravity = _template.gravity : 
@@ -331,8 +327,8 @@ class ParticleEmitter {
 
         particle.rotation = (zrotation + rotation_random * random_1_to_1()) + rotation_offset;
 
-        particle.position.x = (particle_system.pos.x + pos_random.x * random_1_to_1()) + pos_offset.x;
-        particle.position.y = (particle_system.pos.y + pos_random.y * random_1_to_1()) + pos_offset.y;
+        particle.position.x = emiterShape.x + Math.random() * emiterShape.width;
+        particle.position.y = emiterShape.y + Math.random() * emiterShape.height;
 
         if(particle_cache[cache_index] != null) {
             particle.sprite = particle_cache[cache_index];
