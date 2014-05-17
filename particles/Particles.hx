@@ -79,7 +79,7 @@ class ParticleEmitter {
 
     public var active : Bool = true;
     public var emit_count : Int = 1;
-    public var active_particles : Array<Particle>;
+    public var particles : Array<Particle>;
 
     public var elapsed_time : Float = 0;
     public var duration : Float = -1;
@@ -144,7 +144,7 @@ class ParticleEmitter {
         template = _template;
         particle_system = _system;
 
-        active_particles = new Array<Particle>();
+        particles = new Array<Particle>();
         particle_cache = new Array<Sprite>();
  
         emit_timer = 0;
@@ -152,8 +152,6 @@ class ParticleEmitter {
         emit_next = 0;
 
         _temp_speed = new Point();
-
-        to_remove = [];
             
             //apply defaults 
         apply(template);
@@ -281,7 +279,7 @@ class ParticleEmitter {
     } //apply
 
     public function destroy() {
-        active_particles = null;
+        particles = null;
         for(p in particle_cache) {
             p = null;
         }
@@ -309,12 +307,19 @@ class ParticleEmitter {
     }
 
     private function spawn() {
+        var particle = null;
+        for(p in particles)
+            if(!p.active){
+                particle = p;
+                break;
+            }
 
-        var particle = new Particle(this);
+        if(particle == null){
+            particle = new Particle(this);
+            particles.push(particle);
+        }
         
         init_particle( particle );
-        active_particles.push( particle );
-
     }
 
     private function random_1_to_1(){ return Math.random() * 2 - 1; }
@@ -331,6 +336,7 @@ class ParticleEmitter {
     var _temp_speed : Point;
 
     private function init_particle( particle:Particle ) {
+        particle.active = true;
 
         particle.rotation = (zrotation + rotation_random * random_1_to_1()) + rotation_offset;
 
@@ -338,15 +344,9 @@ class ParticleEmitter {
         particle.position.y = (particle_system.pos.y + pos_random.y * random_1_to_1()) + pos_offset.y;
 
         if(particle_cache[cache_index] != null) {
-
             particle.sprite = particle_cache[cache_index];
             particle.sprite.visible = true;
-
-                //kill the oldest sprite, as we are now reworking our way up the cache
-            active_particles.shift().sprite.visible = false;
-
         } else {
-
             var b = new Bitmap( particle_image );
             particle.sprite = new Sprite();
             b.x -= particle_image.width/2;
@@ -429,7 +429,6 @@ class ParticleEmitter {
 
     var dt : Float = 0.016;
     var enddt : Float = 0;
-    var to_remove : Array<Particle>; 
 
     public function update() {
 
@@ -458,7 +457,8 @@ class ParticleEmitter {
         var gravity_y = gravity.y * dt;
 
             //update all active particles
-        for(current_particle in active_particles) {
+        for(current_particle in particles) {
+            if(!current_particle.active) continue;
 
                 //die over time
             current_particle.time_to_live -= dt;
@@ -491,8 +491,8 @@ class ParticleEmitter {
                 current_particle.draw_size.setTo( xx, yy );
 
             } else {
-
-                to_remove.push(current_particle);                
+              //TODO: killing
+                current_particle.active = false;
                 current_particle.sprite.visible = false;
 
             }
@@ -509,26 +509,12 @@ class ParticleEmitter {
 
         } //for each active particle
 
-            //remove the dead ones
-        for(_particle in to_remove) {
-            active_particles.remove(_particle);
-        }
-
-            //clean up the dead list
-        to_remove.splice(0,to_remove.length);
-
-            //todo
-        // if(active_particles.length == 0 ) {
-        //     if(oncomplete) {
-        //         oncomplete();
-        //     }
-        // }
-
     } //update
 
 } //ParticleEmitter
 
 class Particle {
+    public var active : Bool;
 
     public var particle_system : ParticleSystem;
     public var particle_emitter : ParticleEmitter;
@@ -554,7 +540,7 @@ class Particle {
     public var draw_size : Point;
     public var draw_color : Color;
 
-    public function new(e:ParticleEmitter) {
+    public function new(e : ParticleEmitter) {
 
         particle_emitter = e;
         particle_system = e.particle_system;
@@ -578,9 +564,44 @@ class Particle {
         draw_position = new Point();
 
     }
+
+    static var tmpParticle : Particle;
+
+    inline static function copyPoint(a : Point, b : Point){
+        a.setTo(b.x, b.y);
+    }
+
+    static function copy(a : Particle, b : Particle){
+        a.active = b.active;
+        a.particle_emitter = b.particle_emitter;
+        a.particle_system = b.particle_system;
+
+        copyPoint(a.direction, b.direction);
+        copyPoint(a.move_direction, b.move_direction);
+        copyPoint(a.speed, b.speed);
+        copyPoint(a.size, b.size);
+        copyPoint(a.position, b.position);
+        copyPoint(a.start_size, b.start_size);
+        copyPoint(a.end_size, b.end_size);
+        copyPoint(a.size_delta, b.size_delta);
+
+        a.color_delta.set(b.color_delta);
+        a.color.set(b.color);
+        a.end_color.set(b.end_color);
+        a.draw_color.set(b.draw_color);
+
+        copyPoint(a.draw_size, b.draw_size);
+        copyPoint(a.draw_position, b.draw_position);
+    }
+
+    public static function swap(a : Particle, b : Particle){
+        if(tmpParticle == null)
+            tmpParticle = new Particle(null);
+        copy(tmpParticle, a);
+        copy(a, b);
+        copy(b, tmpParticle);
+    }
 }
-
-
 
 class Color {
 
@@ -596,7 +617,15 @@ class Color {
         a = _a;
     }
 
-    public function set( ?_r : Float, ?_g : Float, ?_b : Float, ?_a : Float ) : Color {
+    public function set( ?color : Color = null, ?_r : Float, ?_g : Float, ?_b : Float, ?_a : Float ) : Color {
+        if(color != null){
+            this.r = color.r;
+            this.g = color.g;
+            this.b = color.b;
+            this.a = color.a;
+
+            return this;
+        }
 
         var _setr = r;
         var _setg = g;
@@ -637,5 +666,5 @@ class Color {
             //but we don't need to clobber it, 
             //it was set in the member list
         // a = 1.0;
-    }    
+    }
 }
