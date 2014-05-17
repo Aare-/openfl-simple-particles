@@ -150,8 +150,6 @@ class ParticleEmitter {
         emit_timer = 0;
         emit_last = 0;
         emit_next = 0;
-
-        _temp_speed = new Point();
             
         //apply defaults
         apply(template);
@@ -328,8 +326,6 @@ class ParticleEmitter {
         return target;
     }
 
-    var _temp_speed : Point;
-
     private function init_particle( particle:Particle ) {
         particle.active = true;
 
@@ -361,11 +357,10 @@ class ParticleEmitter {
         }
 
         var new_dir = (direction + direction_random * random_1_to_1() ) * ( Math.PI / 180 ); // convert to radians
-        particle.direction.setTo(Math.cos( new_dir ),
-                                 Math.sin( new_dir ));
-
-        var _point_speed = speed + speed_random * random_1_to_1();
-        particle.speed = _point_speed;
+        var new_speed = speed + speed_random * random_1_to_1();
+        particle.velocity.setTo(Math.cos( new_dir ) * new_speed,
+                                Math.sin( new_dir ) * new_speed);
+        particle.acceleration.setTo(0, 0);
 
         particle.start_size.x = start_size.x + (start_size_random.x * random_1_to_1());
         particle.start_size.y = start_size.y + (start_size_random.y * random_1_to_1());
@@ -443,9 +438,6 @@ class ParticleEmitter {
 
         } //if active and still emitting
 
-        var gravity_x = gravity.x * dt;
-        var gravity_y = gravity.y * dt;
-
             //update all active particles
         for(current_particle in particles) {
             if(!current_particle.active) continue;
@@ -455,11 +447,17 @@ class ParticleEmitter {
 
                 // If the current particle is alive 
             if( current_particle.time_to_live > 0 ) {
+                //updating velocity by acceleration
+                current_particle.velocity.x
+                    = current_particle.velocity.x + (current_particle.acceleration.x + gravity.x) * dt;
+                current_particle.velocity.y
+                    = current_particle.velocity.y + (current_particle.acceleration.y + gravity.y) * dt;
 
+                //updating position by velocity
                 current_particle.position.x
-                    = current_particle.position.x + current_particle.direction.x * current_particle.speed * dt;
+                    = current_particle.position.x + current_particle.velocity.x * dt;
                 current_particle.position.y
-                    = current_particle.position.y + current_particle.direction.y * current_particle.speed * dt;
+                    = current_particle.position.y + current_particle.velocity.y * dt;
 
                     // update colours based on delta
                 var r = current_particle.color.r += ( current_particle.color_delta.r * dt );
@@ -519,8 +517,10 @@ class Particle {
     public var end_size : Point;
     public var size : Point;
     public var position : Point;
-    public var direction : Point;
-    public var speed : Float;
+
+    public var velocity     : Point;
+    public var acceleration : Point;
+
     public var time_to_live : Float = 0;
     public var rotation : Float = 0;
     
@@ -535,13 +535,12 @@ class Particle {
     public var draw_color : Color;
 
     public function new(e : ParticleEmitter) {
-
         particle_emitter = e;
         particle_system = e.particle_system;
-        
-        direction = new Point();
 
-        speed = 0.0;
+        velocity = new Point();
+        acceleration = new Point();
+
         size = new Point();
         position = new Point();
         start_size = new Point();
@@ -568,9 +567,9 @@ class Particle {
         a.active = b.active;
         a.particle_emitter = b.particle_emitter;
         a.particle_system = b.particle_system;
-        a.speed = b.speed;
 
-        copyPoint(a.direction, b.direction);
+        copyPoint(a.velocity, b.velocity);
+        copyPoint(a.acceleration, b.acceleration);
         copyPoint(a.size, b.size);
         copyPoint(a.position, b.position);
         copyPoint(a.start_size, b.start_size);
