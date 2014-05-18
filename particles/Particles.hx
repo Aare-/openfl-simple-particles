@@ -31,8 +31,7 @@ class ParticleSystem extends Sprite {
 
             //disallow large dt values 
         enddt = haxe.Timer.stamp();
-
-    } //new
+    }
 
     public function add_emitter(_name:String, _template:Dynamic) {
 
@@ -43,35 +42,34 @@ class ParticleSystem extends Sprite {
             //store the reference of the emitter
         emitters.set(_name, _emitter);
 
-    } //add
+    }
 
     public function emit(duration:Float = -1) {
         active = true;
         for(emitter in emitters) {
             emitter.emit(duration);
         }
-    } //emit
+    }
 
     public function stop() {
         active = false;
         for(emitter in emitters) {
             emitter.stop();
         }        
-    } //stop
+    }
 
     public function destroy() {
         for(emitter in emitters) {
             emitter.destroy();
         }        
-    } //destroy
+    }
 
     public function update(o) {
         if(!active) return;
-        for(emitter in emitters) {
+        for(emitter in emitters)
             emitter.update();
-        }
-    } //update
 
+    }
 }
 
 class FloatFromRange {
@@ -153,7 +151,6 @@ class ParticleEmitter {
     var emit_timer : Float = 0;
 
     public var particle_image : BitmapData = null;
-    public var particle_cache : Array<Sprite>;
 
     //emitter properties
     public var emiterShape : Rectangle;
@@ -191,7 +188,6 @@ class ParticleEmitter {
         particle_system = _system;
 
         particles = new Array<Particle>();
-        particle_cache = new Array<Sprite>();
         emiterShape = new Rectangle(particle_system.pos.x, particle_system.pos.y, 0, 0);
  
         emit_timer = 0;
@@ -271,11 +267,6 @@ class ParticleEmitter {
 
     public function destroy() {
         particles = null;
-        for(p in particle_cache) {
-            particle_system.removeChild(p);
-            p = null;
-        }
-        particle_cache = null;
     }
 
     public function emit(t : Float){
@@ -333,25 +324,6 @@ class ParticleEmitter {
         particle.position.x = emiterShape.x + Math.random() * emiterShape.width;
         particle.position.y = emiterShape.y + Math.random() * emiterShape.height;
 
-
-        var particleSprite : Sprite = null;
-        for(p in particle_cache)
-            if(!p.visible){
-                particleSprite = p;
-                break;
-            }
-        if(particleSprite == null){
-            var b = new Bitmap( particle_image );
-            particleSprite = new Sprite();
-            b.x -= particle_image.width/2;
-            b.y -= particle_image.height/2;
-            particle_cache.push(particleSprite);
-            particleSprite.addChild( b );
-            particle_system.addChild( particleSprite );
-        }
-
-        particle.sprite = particleSprite;
-
         var new_dir = direction.value * ( Math.PI / 180 ); // convert to radians
         var new_velocity = velocity.value;
 
@@ -377,17 +349,6 @@ class ParticleEmitter {
 
         if(has_end_rotation)
             particle.rotation_delta  = ( end_rotation.value - particle.rotation ) / particle.time_to_live;
-
-        //update sprite
-        particle.sprite.visible = true;
-        particle.sprite.width = particle.start_size.x;
-        particle.sprite.height = particle.start_size.y;
-
-        // particle.sprite.color = particle.color;
-        particle.sprite.x = particle.position.x;
-        particle.sprite.y = particle.position.y;
-        particle.sprite.rotation = particle.rotation;
-        particle.sprite.alpha = particle.color.a;
     } //init_particle
 
     var dt : Float = 0.016;
@@ -448,19 +409,11 @@ class ParticleEmitter {
                 if(r > 1) { r = 1; } if(g > 1) { g = 1; } if(b > 1) { b = 1; } if(a > 1) { a = 1; }
 
                 //updatying visuals
-                current_particle.sprite.x = current_particle.position.x;
-                current_particle.sprite.y = current_particle.position.y;
-                current_particle.sprite.width
-                    = current_particle.start_size.x += ( current_particle.size_delta.x * dt );
-                current_particle.sprite.height
-                    = current_particle.start_size.y += ( current_particle.size_delta.y * dt );
-                current_particle.sprite.rotation
-                    = current_particle.rotation += ( current_particle.rotation_delta * dt );
-                current_particle.sprite.alpha = a;
+                current_particle.start_size.x += ( current_particle.size_delta.x * dt );
+                current_particle.start_size.y += ( current_particle.size_delta.y * dt );
+                current_particle.rotation += ( current_particle.rotation_delta * dt );
             } else {
                 current_particle.active = false;
-                current_particle.sprite.visible = false;
-                current_particle.sprite = null;
             }
         }
     }
@@ -478,7 +431,6 @@ class Particle {
 
     public var particle_system : ParticleSystem;
     public var particle_emitter : ParticleEmitter;
-    public var sprite : Sprite;
 
     public var start_size : Point;
     public var position : Point;
@@ -578,7 +530,6 @@ class Color {
     } //rgb    
 
     private function from_int(_i:Int) {
-
         var _r = _i >> 16;
         var _g = _i >> 8 & 0xFF;
         var _b = _i & 0xFF;
@@ -594,3 +545,26 @@ class Color {
         // a = 1.0;
     }
 }
+
+/*
+  var b = new Bitmap( particle_image );
+            particleSprite = new Sprite();
+            b.x -= particle_image.width/2;
+            b.y -= particle_image.height/2;
+            particle_cache.push(particleSprite);
+            particleSprite.addChild( b );
+            particle_system.addChild( particleSprite );
+*/
+
+/*
+  //update sprite
+        particle.sprite.visible = true;
+        particle.sprite.width = particle.start_size.x;
+        particle.sprite.height = particle.start_size.y;
+
+        // particle.sprite.color = particle.color;
+        particle.sprite.x = particle.position.x;
+        particle.sprite.y = particle.position.y;
+        particle.sprite.rotation = particle.rotation;
+        particle.sprite.alpha = particle.color.a;
+*/
