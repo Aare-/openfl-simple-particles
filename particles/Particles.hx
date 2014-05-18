@@ -70,6 +70,46 @@ class ParticleSystem extends Sprite {
             emitter.update();
 
     }
+
+    //default - debug renderer
+    public static function bitmapParticleFunctionRenderFactory(emiter : ParticleEmitter, bitmapData : BitmapData){
+        var spritesArray   : Array<Sprite> = [];
+        var posCounter     : Int;
+        var particle_image : BitmapData = bitmapData;
+
+        emiter.beforeRender = inline function(){
+            posCounter = 0;
+        };
+        emiter.renderParticle = inline function(particle : Particle){
+            if(spritesArray.length <= posCounter){
+                var particleSprite = new Sprite();
+                var b = new Bitmap( particle_image );
+                b.x -= particle_image.width  / 2;
+                b.y -= particle_image.height / 2;
+
+                particleSprite.addChild( b );
+
+                spritesArray.push(particleSprite);
+                emiter.particle_system.addChild( particleSprite );
+            }
+
+            spritesArray[posCounter].visible = true;
+            spritesArray[posCounter].width = particle.start_size.x;
+            spritesArray[posCounter].height = particle.start_size.y;
+
+            // particle.sprite.color = particle.color;
+            spritesArray[posCounter].x = particle.position.x;
+            spritesArray[posCounter].y = particle.position.y;
+            spritesArray[posCounter].rotation = particle.rotation;
+            spritesArray[posCounter].alpha = particle.color.a;
+
+            posCounter++;
+        };
+        emiter.afterRender = inline function(){
+            for(i in posCounter ... spritesArray.length)
+                spritesArray[i].visible = false;
+        };
+    }
 }
 
 class FloatFromRange {
@@ -134,7 +174,6 @@ class ColorFromRange {
 }
 
 class ParticleEmitter {
-
     public var particle_system : ParticleSystem;
 
     public var active : Bool = true;
@@ -149,8 +188,6 @@ class ParticleEmitter {
     public var particle_index : Int = 0;
 
     var emit_timer : Float = 0;
-
-    public var particle_image : BitmapData = null;
 
     //emitter properties
     public var emiterShape : Rectangle;
@@ -174,6 +211,11 @@ class ParticleEmitter {
 
     public var start_color : ColorFromRange;
     public var end_color   : ColorFromRange;
+
+    //rendering particles - inline this functions for best performance
+    public var beforeRender   : Void -> Void;
+    public var renderParticle : Particle -> Void;
+    public var afterRender    : Void -> Void;
 
     //internal stuff
     public var template : Dynamic = null;
@@ -200,11 +242,7 @@ class ParticleEmitter {
 
     public function apply(_template:Dynamic) {
         if(_template == null) _template = {};
-        
-        (_template.particle_image != null) ? 
-            particle_image = _template.particle_image : 
-            particle_image = null;
-//            
+
         (_template.emit_time != null) ? 
             emit_time = _template.emit_time : 
             emit_time = 0.1;
@@ -355,7 +393,6 @@ class ParticleEmitter {
     var enddt : Float = 0;
 
     public function update() {
-
         dt = haxe.Timer.stamp() - enddt;
         enddt = haxe.Timer.stamp();
 
@@ -371,20 +408,20 @@ class ParticleEmitter {
             }
 
             if(finish_time != -1 &&
-               (duration != -1 && emit_timer > finish_time) ){
+               (duration != -1 && emit_timer > finish_time) )
                 stop();
-            }
 
         } //if active and still emitting
 
-            //update all active particles
+        //update all active particles
+        if(beforeRender != null) beforeRender();
         for(current_particle in particles) {
             if(!current_particle.active) continue;
 
-                //die over time
+            //die over time
             current_particle.time_to_live -= dt;
 
-                // If the current particle is alive 
+            // If the current particle is alive
             if( current_particle.time_to_live > 0 ) {
                 //updating velocity by acceleration
                 current_particle.velocity.x
@@ -412,10 +449,15 @@ class ParticleEmitter {
                 current_particle.start_size.x += ( current_particle.size_delta.x * dt );
                 current_particle.start_size.y += ( current_particle.size_delta.y * dt );
                 current_particle.rotation += ( current_particle.rotation_delta * dt );
+
+                if(renderParticle != null)
+                    renderParticle(current_particle);
             } else {
                 current_particle.active = false;
             }
         }
+
+        if(afterRender != null) afterRender();
     }
 
   //utils
@@ -433,17 +475,17 @@ class Particle {
     public var particle_emitter : ParticleEmitter;
 
     public var start_size : Point;
-    public var position : Point;
+    public var position   : Point;
 
     public var velocity     : Point;
     public var acceleration : Point;
 
     public var time_to_live : Float = 0;
-    public var rotation : Float = 0;
+    public var rotation     : Float = 0;
     
-    public var color : Color;
-    public var color_delta : Color;
-    public var size_delta : Point;
+    public var color          : Color;
+    public var color_delta    : Color;
+    public var size_delta     : Point;
     public var rotation_delta : Float = 0;
 
     public function new(e : ParticleEmitter) {
@@ -493,11 +535,10 @@ class Particle {
 }
 
 class Color {
-
-    public var r:Float;
-    public var g:Float;
-    public var b:Float;
-    public var a:Float;
+    public var r : Float;
+    public var g : Float;
+    public var b : Float;
+    public var a : Float;
     
     public function new( ?color : Color = null, _r:Float = 1.0, _g:Float = 1.0, _b:Float = 1.0, _a:Float = 1.0 ) {
         set(color, _r, _g, _b, _a);
@@ -545,26 +586,3 @@ class Color {
         // a = 1.0;
     }
 }
-
-/*
-  var b = new Bitmap( particle_image );
-            particleSprite = new Sprite();
-            b.x -= particle_image.width/2;
-            b.y -= particle_image.height/2;
-            particle_cache.push(particleSprite);
-            particleSprite.addChild( b );
-            particle_system.addChild( particleSprite );
-*/
-
-/*
-  //update sprite
-        particle.sprite.visible = true;
-        particle.sprite.width = particle.start_size.x;
-        particle.sprite.height = particle.start_size.y;
-
-        // particle.sprite.color = particle.color;
-        particle.sprite.x = particle.position.x;
-        particle.sprite.y = particle.position.y;
-        particle.sprite.rotation = particle.rotation;
-        particle.sprite.alpha = particle.color.a;
-*/
