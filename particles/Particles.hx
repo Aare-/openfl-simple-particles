@@ -170,9 +170,7 @@ class ParticleEmitter {
 
     public var elapsed_time : Float = 0;
     public var duration : Float = -1;
-    public var emission_rate : Float = 0;    
-    public var emit_next : Float = 0;
-    public var emit_last : Float = 0;
+    public var emission_rate : Float = 0;
     public var particle_index : Int = 0;
 
     var emit_timer : Float = 0;
@@ -221,8 +219,6 @@ class ParticleEmitter {
         emiterShape = new Rectangle(particle_system.pos.x, particle_system.pos.y, 0, 0);
  
         emit_timer = 0;
-        emit_last = 0;
-        emit_next = 0;
             
         //apply defaults
         apply(template);
@@ -298,12 +294,10 @@ class ParticleEmitter {
     public function emit(t : Float){
         duration = t;
         active = true;
-        emit_last = 0;
-        emit_timer = 0;
-        emit_next = 0;
+        emit_timer = emit_time;
 
         if(duration != -1) {
-            finish_time = haxe.Timer.stamp() + duration;
+            finish_time = duration;
         }else{
             finish_time = -1;
         }
@@ -379,18 +373,19 @@ class ParticleEmitter {
 
         if( active ) { // && emission_rate > 0            
 
-            emit_timer = haxe.Timer.stamp();
+            emit_timer += dt;
 
-            if( emit_timer > emit_next ) {                
-                emit_next = emit_timer + emit_time; 
-                emit_last = emit_timer;
+            if( emit_timer >= emit_time ) {
+                emit_timer = 0;
                 for(i in 0 ... emit_count)
                     spawn();
             }
 
-            if(finish_time != -1 &&
-               (duration != -1 && emit_timer > finish_time) )
-                stop();
+            if(finish_time != -1){
+                finish_time -= dt;
+                if(finish_time <= 0)
+                    stop();
+            }
 
         } //if active and still emitting
 
