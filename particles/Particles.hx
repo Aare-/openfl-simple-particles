@@ -13,24 +13,13 @@ class ParticleSystem extends Sprite {
     public var emitters : Map<String, ParticleEmitter>;
     public var pos : Point;
 
-    var dt : Float = 0.016;
-    var enddt : Float = 0;    
-
-    var fixed_timestep : Float = -1;    
-
-    public function new( _pos:Point, ?_fixed_timestep : Float = -1 ) {
+    public function new( _pos:Point) {
 
         super();
 
         if(emitters == null) new Map<String, ParticleEmitter>();
 
         pos = _pos;
-        fixed_timestep = _fixed_timestep;
-
-        addEventListener( flash.events.Event.ENTER_FRAME, update );
-
-            //disallow large dt values 
-        enddt = haxe.Timer.stamp();
     }
 
     public function add_emitter(_name:String, _template:Dynamic) {
@@ -44,7 +33,7 @@ class ParticleSystem extends Sprite {
 
     }
 
-    public function emit(duration:Float = -1) {
+    public function emit(duration : Float = -1) {
         active = true;
         for(emitter in emitters) {
             emitter.emit(duration);
@@ -59,15 +48,14 @@ class ParticleSystem extends Sprite {
     }
 
     public function destroy() {
-        for(emitter in emitters) {
+        for(emitter in emitters)
             emitter.destroy();
-        }        
     }
 
-    public function update(o) {
+    public function update(dt : Float) {
         if(!active) return;
         for(emitter in emitters)
-            emitter.update();
+            emitter.update(dt);
 
     }
 
@@ -314,8 +302,6 @@ class ParticleEmitter {
         emit_timer = 0;
         emit_next = 0;
 
-        enddt = haxe.Timer.stamp();
-
         if(duration != -1) {
             finish_time = haxe.Timer.stamp() + duration;
         }else{
@@ -389,12 +375,7 @@ class ParticleEmitter {
             particle.rotation_delta  = ( end_rotation.value - particle.rotation ) / particle.time_to_live;
     } //init_particle
 
-    var dt : Float = 0.016;
-    var enddt : Float = 0;
-
-    public function update() {
-        dt = haxe.Timer.stamp() - enddt;
-        enddt = haxe.Timer.stamp();
+    public function update(dt : Float) {
 
         if( active ) { // && emission_rate > 0            
 
