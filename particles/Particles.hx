@@ -74,6 +74,67 @@ class ParticleSystem extends Sprite {
 
 }
 
+class FloatFromRange {
+    var _value : Float;
+    public var value (get, set)   : Float;
+    public var scatter : Float;
+
+    function set_value( val : Float) : Float{
+        _value = val;
+        return _value;
+    }
+
+    function get_value() : Float {
+        return (Math.random() * 2.0 - 1.0) * scatter + _value;
+    }
+
+    public function new(value : Float, ?scatter : Float = 0.0){
+        this.value = value;
+        this.scatter = scatter;
+    }
+}
+
+class PointFromRange {
+    public var x : FloatFromRange;
+    public var y : FloatFromRange;
+
+    public function new(value : Point, ?scatter : Point = null){
+        if(scatter == null)
+            scatter = new Point(0, 0);
+
+        x = new FloatFromRange(value.x, scatter.x);
+        y = new FloatFromRange(value.y, scatter.y);
+    }
+}
+
+class ColorFromRange {
+    var _value : Color;
+    public var value (get, set) : Color;
+    public var scatter          : Color;
+    var returnValue             : Color;
+
+    function set_value( val : Color ) : Color {
+        this._value = val;
+        return this._value;
+    }
+
+    function get_value() : Color {
+        returnValue.r = _value.r + (Math.random() * 2.0 - 1.0) * scatter.r;
+        returnValue.g = _value.g + (Math.random() * 2.0 - 1.0) * scatter.g;
+        returnValue.b = _value.b + (Math.random() * 2.0 - 1.0) * scatter.b;
+        returnValue.a = _value.a + (Math.random() * 2.0 - 1.0) * scatter.a;
+        return returnValue;
+    }
+
+    public function new(value : Color, ?scatter : Color = null){
+        returnValue = new Color();
+        if(scatter == null)
+            scatter = new Color(0.0, 0.0, 0.0, 0.0);
+        this.scatter = scatter;
+        _value = value;
+    }
+}
+
 class ParticleEmitter {
 
     public var particle_system : ParticleSystem;
@@ -91,44 +152,31 @@ class ParticleEmitter {
 
     var emit_timer : Float = 0;
 
-    public var particle_cache : Array<Sprite>;
-    public var cache_size : Int = 100;
-    public var cache_index : Int = 0;
-
-        //emitter properties
     public var particle_image : BitmapData = null;
+    public var particle_cache : Array<Sprite>;
+
+    //emitter properties
     public var emiterShape : Rectangle;
-    public var emit_time : Float;
-    /* direction of emmiter, in degrees*/
-    public var direction : Float;
-    public var direction_random : Float;
     public var gravity : Point;
+    public var emit_time : Float;
 
-    public var zrotation : Float = 0;
-
-        //todo
-    public var radius : Float = 50;
-    public var radius_random : Float = 50;
-
-        //particle properties
-    public var start_size:Point;
-    public var start_size_random:Point;
-    public var end_size:Point;
-    public var end_size_random:Point;
-    public var speed : Float;
-    public var speed_random : Float;
-    public var life : Float;
-    public var life_random : Float;
-    
-    public var rotation_value : Float;
-    public var rotation_random : Float;
-    public var end_rotation : Float;
-    public var end_rotation_random : Float;
+    /* direction of emmiter, in degrees*/
+    public var direction       : FloatFromRange;
+    public var zrotation       : FloatFromRange;
     public var rotation_offset : Float;
-    public var start_color : Color;
-    public var start_color_random : Color;
-    public var end_color : Color;
-    public var end_color_random : Color;
+    public var radius          : FloatFromRange;
+
+    //particle properties
+    public var start_size : PointFromRange;
+    public var end_size   : PointFromRange;
+    public var velocity   : FloatFromRange;
+    public var life       : FloatFromRange;
+    
+    public var rotation_value  : FloatFromRange;
+    public var end_rotation    : FloatFromRange;
+
+    public var start_color : ColorFromRange;
+    public var end_color   : ColorFromRange;
 
     //internal stuff
     public var template : Dynamic = null;
@@ -165,59 +213,32 @@ class ParticleEmitter {
             emit_time = _template.emit_time : 
             emit_time = 0.1;
 
-//            
-        (_template.cache_size != null) ? 
-            cache_size = _template.cache_size : 
-            cache_size = 100;
-
         (_template.emit_count != null) ? 
             emit_count = _template.emit_count : 
             emit_count = 1;
 
         (_template.direction != null) ? 
             direction = _template.direction : 
-            direction = 0;
+            direction = new FloatFromRange(0.0);
 
-        (_template.direction_random != null) ? 
-            direction_random = _template.direction_random : 
-            direction_random = 0;
-
-        (_template.speed != null) ?
-            speed = _template.speed : 
-            speed = 0;
-
-//
-        (_template.speed_random != null) ?
-            speed_random = _template.speed_random : 
-            speed_random = 0;
+        (_template.velocity != null) ?
+            velocity = _template.velocity :
+            velocity = new FloatFromRange(0.0);
 
         (_template.life != null) ?
-            life = _template.life : life = 1;
+            life = _template.life : life = new FloatFromRange(1.0);
 
-        (_template.life_random != null) ?
-            life_random = _template.life_random : 
-            life_random = 0;
-
-//
         (_template.rotation != null) ?
             zrotation = _template.rotation : 
-            zrotation = 0;
-
-        (_template.rotation_random != null) ?
-            rotation_random = _template.rotation_random : 
-            rotation_random = 360;
-
-        (_template.end_rotation != null) 
-            ? { end_rotation = _template.end_rotation; has_end_rotation = true; } 
-            : { end_rotation = 0; }
-
-        (_template.end_rotation_random != null) ?
-            end_rotation_random = _template.end_rotation_random : 
-            end_rotation_random = 360;
+            zrotation = new FloatFromRange(0.0);
 
         (_template.rotation_offset != null) ?
             rotation_offset = _template.rotation_offset :
-            rotation_offset = 0;
+            rotation_offset = 0.0;
+
+        (_template.end_rotation != null) 
+            ? { end_rotation = _template.end_rotation;  has_end_rotation = true;  }
+            : { end_rotation = new FloatFromRange(0.0); has_end_rotation = false; }
 
         if(_template.emiter_shape != null)
             emiterShape.setTo(particle_system.pos.x + _template.emiter_shape.x,
@@ -227,49 +248,31 @@ class ParticleEmitter {
             emiterShape.setTo(particle_system.pos.x, particle_system.pos.x,
                               0, 0);
 
-
         (_template.gravity != null) ?
             gravity = _template.gravity : 
             gravity = new Point(0,-80);
 
         (_template.start_size != null) ?
             start_size = _template.start_size : 
-            start_size = new Point(32,32);
-
-        (_template.start_size_random != null) ?
-            start_size_random = _template.start_size_random :
-            start_size_random = new Point(0,0);
+            start_size = new PointFromRange(new Point(32, 32));
 
         (_template.end_size != null) ?
             end_size = _template.end_size : 
-            end_size = new Point(128,128);
+            end_size = new PointFromRange(new Point(128,128));
 
-        (_template.end_size_random != null) ?
-            end_size_random = _template.end_size_random :
-            end_size_random = new Point();
-
-//
         (_template.start_color != null) ? 
             start_color = _template.start_color :
-            start_color = new Color(1,1,1,1);
-
-        (_template.start_color_random != null) ?
-            start_color_random = _template.start_color_random :
-            start_color_random = new Color(0,0,0,0);
+            start_color = new ColorFromRange(new Color(1,1,1,1));
 
         (_template.end_color != null) ?
             end_color = _template.end_color :
-            end_color = new Color(0,0,0,0);
-
-        (_template.end_color_random != null) ?
-            end_color_random = _template.end_color_random :
-            end_color_random = new Color(0,0,0,0);
-
+            end_color = new ColorFromRange(new Color(0,0,0,0));
     } //apply
 
     public function destroy() {
         particles = null;
         for(p in particle_cache) {
+            particle_system.removeChild(p);
             p = null;
         }
         particle_cache = null;
@@ -325,77 +328,58 @@ class ParticleEmitter {
     private function init_particle( particle:Particle ) {
         particle.active = true;
 
-        particle.rotation = (zrotation + rotation_random * random_1_to_1()) + rotation_offset;
+        particle.rotation = zrotation.value + rotation_offset;
 
         particle.position.x = emiterShape.x + Math.random() * emiterShape.width;
         particle.position.y = emiterShape.y + Math.random() * emiterShape.height;
 
-        if(particle_cache[cache_index] != null) {
-            particle.sprite = particle_cache[cache_index];
-            particle.sprite.visible = true;
-        } else {
+
+        var particleSprite : Sprite = null;
+        for(p in particle_cache)
+            if(!p.visible){
+                particleSprite = p;
+                break;
+            }
+        if(particleSprite == null){
             var b = new Bitmap( particle_image );
-            particle.sprite = new Sprite();
+            particleSprite = new Sprite();
             b.x -= particle_image.width/2;
             b.y -= particle_image.height/2;
-            particle.sprite.addChild( b );
-            particle_system.addChild( particle.sprite );
-
-            particle_cache[cache_index] = particle.sprite;
-        }
-                    
-
-            //update the index we are inside the pool
-        ++cache_index;
-            //reset the index if we reach the max        
-        if(cache_index >= cache_size) {
-            cache_index = 0;
+            particle_cache.push(particleSprite);
+            particleSprite.addChild( b );
+            particle_system.addChild( particleSprite );
         }
 
-        var new_dir = (direction + direction_random * random_1_to_1() ) * ( Math.PI / 180 ); // convert to radians
-        var new_speed = speed + speed_random * random_1_to_1();
-        particle.velocity.setTo(Math.cos( new_dir ) * new_speed,
-                                Math.sin( new_dir ) * new_speed);
+        particle.sprite = particleSprite;
+
+        var new_dir = direction.value * ( Math.PI / 180 ); // convert to radians
+        var new_velocity = velocity.value;
+
+        particle.velocity.setTo(Math.cos( new_dir ) * new_velocity,
+                                Math.sin( new_dir ) * new_velocity);
         particle.acceleration.setTo(0, 0);
 
-        particle.start_size.x = start_size.x + (start_size_random.x * random_1_to_1());
-        particle.start_size.y = start_size.y + (start_size_random.y * random_1_to_1());
+        particle.start_size.x = Math.floor(Math.max(0.0, start_size.x.value));
+        particle.start_size.y = Math.floor(Math.max(0.0, start_size.y.value));
 
-        particle.end_size.x = end_size.x + (end_size_random.x * random_1_to_1());
-        particle.end_size.y = end_size.y + (end_size_random.y * random_1_to_1());
+        particle.time_to_live = life.value;
 
-        particle.size.x = particle.start_size.x < 0 ? 0 : Math.floor(particle.start_size.x);
-        particle.size.y = particle.start_size.y < 0 ? 0 : Math.floor(particle.start_size.y);
+        particle.size_delta.x = ( end_size.x.value - particle.start_size.x ) / particle.time_to_live;
+        particle.size_delta.y = ( end_size.y.value - particle.start_size.y ) / particle.time_to_live;
 
-        particle.time_to_live = (life + life_random * random_1_to_1());
+        particle.color     = new Color( start_color.value );
+        var end_color : Color =  new Color( end_color.value );
 
-        particle.size_delta.x = ( end_size.x - start_size.x ) / particle.time_to_live;
-        particle.size_delta.y = ( end_size.y - start_size.y ) / particle.time_to_live;
+        particle.color_delta.r = ( end_color.r - particle.color.r ) / particle.time_to_live;
+        particle.color_delta.g = ( end_color.g - particle.color.g ) / particle.time_to_live;
+        particle.color_delta.b = ( end_color.b - particle.color.b ) / particle.time_to_live;
+        particle.color_delta.a = ( end_color.a - particle.color.a ) / particle.time_to_live;
 
-        var start_color = new Color( start_color.r + start_color_random.r * random_1_to_1(), 
-                                     start_color.g + start_color_random.g * random_1_to_1(), 
-                                     start_color.b + start_color_random.b * random_1_to_1(), 
-                                     start_color.a + start_color_random.a * random_1_to_1() );
-
-        var _end_color   = new Color( end_color.r + end_color_random.r * random_1_to_1(), 
-                                      end_color.g + end_color_random.g * random_1_to_1(), 
-                                      end_color.b + end_color_random.b * random_1_to_1(), 
-                                      end_color.a + end_color_random.a * random_1_to_1() );
-
-        particle.color = start_color;
-        particle.end_color = _end_color;
-
-        particle.color_delta.r = ( _end_color.r - start_color.r ) / particle.time_to_live;
-        particle.color_delta.g = ( _end_color.g - start_color.g ) / particle.time_to_live;
-        particle.color_delta.b = ( _end_color.b - start_color.b ) / particle.time_to_live;
-        particle.color_delta.a = ( _end_color.a - start_color.a ) / particle.time_to_live;
-
-        if(has_end_rotation) {
-            var _end_rotation = end_rotation + end_rotation_random * random_1_to_1();
-            particle.rotation_delta  = ( _end_rotation - particle.rotation ) / particle.time_to_live;
-        }
+        if(has_end_rotation)
+            particle.rotation_delta  = ( end_rotation.value - particle.rotation ) / particle.time_to_live;
 
         //update sprite
+        particle.sprite.visible = true;
         particle.sprite.width = particle.start_size.x;
         particle.sprite.height = particle.start_size.y;
 
@@ -404,7 +388,6 @@ class ParticleEmitter {
         particle.sprite.y = particle.position.y;
         particle.sprite.rotation = particle.rotation;
         particle.sprite.alpha = particle.color.a;
-
     } //init_particle
 
     var dt : Float = 0.016;
@@ -422,9 +405,8 @@ class ParticleEmitter {
             if( emit_timer > emit_next ) {                
                 emit_next = emit_timer + emit_time; 
                 emit_last = emit_timer;
-                for(i in 0 ... emit_count) {
+                for(i in 0 ... emit_count)
                     spawn();
-                }
             }
 
             if(finish_time != -1 &&
@@ -455,42 +437,33 @@ class ParticleEmitter {
                 current_particle.position.y
                     = current_particle.position.y + current_particle.velocity.y * dt;
 
-                    // update colours based on delta
+                // update colours based on delta
                 var r = current_particle.color.r += ( current_particle.color_delta.r * dt );
                 var g = current_particle.color.g += ( current_particle.color_delta.g * dt );
                 var b = current_particle.color.b += ( current_particle.color_delta.b * dt );
                 var a = current_particle.color.a += ( current_particle.color_delta.a * dt );
 
-                var xx = current_particle.size.x += ( current_particle.size_delta.x * dt );
-                var yy = current_particle.size.y += ( current_particle.size_delta.y * dt );
-                var rr = current_particle.rotation += ( current_particle.rotation_delta * dt );
-
-                    //clamp colors
+                //clamp colors
                 if(r < 0) { r = 0; } if(g < 0) { g = 0; } if(b < 0) { b = 0; } if(a < 0) { a = 0; }
                 if(r > 1) { r = 1; } if(g > 1) { g = 1; } if(b > 1) { b = 1; } if(a > 1) { a = 1; }
 
-                current_particle.draw_color.set( r,g,b,a );
-                current_particle.draw_size.setTo( xx, yy );
-
+                //updatying visuals
+                current_particle.sprite.x = current_particle.position.x;
+                current_particle.sprite.y = current_particle.position.y;
+                current_particle.sprite.width
+                    = current_particle.start_size.x += ( current_particle.size_delta.x * dt );
+                current_particle.sprite.height
+                    = current_particle.start_size.y += ( current_particle.size_delta.y * dt );
+                current_particle.sprite.rotation
+                    = current_particle.rotation += ( current_particle.rotation_delta * dt );
+                current_particle.sprite.alpha = a;
             } else {
                 current_particle.active = false;
                 current_particle.sprite.visible = false;
+                current_particle.sprite = null;
             }
-
-                //now transfer the updated info to the visuals
-            current_particle.sprite.x = current_particle.position.x;
-            current_particle.sprite.y = current_particle.position.y;
-            current_particle.sprite.width = current_particle.draw_size.x;
-            current_particle.sprite.height = current_particle.draw_size.y;
-            current_particle.sprite.rotation = current_particle.rotation;
-            current_particle.sprite.alpha = current_particle.draw_color.a;
-                //todo, color filter?
-            // current_particle.sprite.color = particle.draw_color; 
-
-        } //for each active particle
-
-    } //update
-
+        }
+    }
 
   //utils
     private function normalise(vec : Point){
@@ -498,8 +471,6 @@ class ParticleEmitter {
         vec.x /= len;
         vec.y /= len;
     }
-
-    private inline function random_1_to_1(){ return Math.random() * 2 - 1; }
 } //ParticleEmitter
 
 class Particle {
@@ -510,8 +481,6 @@ class Particle {
     public var sprite : Sprite;
 
     public var start_size : Point;
-    public var end_size : Point;
-    public var size : Point;
     public var position : Point;
 
     public var velocity     : Point;
@@ -521,14 +490,9 @@ class Particle {
     public var rotation : Float = 0;
     
     public var color : Color;
-    public var end_color : Color;
     public var color_delta : Color;
     public var size_delta : Point;
     public var rotation_delta : Float = 0;
-    
-    public var draw_position : Point;
-    public var draw_size : Point;
-    public var draw_color : Color;
 
     public function new(e : ParticleEmitter) {
         particle_emitter = e;
@@ -537,20 +501,13 @@ class Particle {
         velocity = new Point();
         acceleration = new Point();
 
-        size = new Point();
         position = new Point();
         start_size = new Point();
-        end_size = new Point();
         size_delta = new Point();
 
             //delta must be 0
         color_delta = new Color(0,0,0,0);
         color = new Color();
-        end_color = new Color();
-        draw_color = new Color();
-        draw_size = new Point();
-        draw_position = new Point();
-
     }
 
     static var tmpParticle : Particle;
@@ -566,19 +523,12 @@ class Particle {
 
         copyPoint(a.velocity, b.velocity);
         copyPoint(a.acceleration, b.acceleration);
-        copyPoint(a.size, b.size);
         copyPoint(a.position, b.position);
         copyPoint(a.start_size, b.start_size);
-        copyPoint(a.end_size, b.end_size);
         copyPoint(a.size_delta, b.size_delta);
 
         a.color_delta.set(b.color_delta);
         a.color.set(b.color);
-        a.end_color.set(b.end_color);
-        a.draw_color.set(b.draw_color);
-
-        copyPoint(a.draw_size, b.draw_size);
-        copyPoint(a.draw_position, b.draw_position);
     }
 
     public static function swap(a : Particle, b : Particle){
@@ -597,14 +547,12 @@ class Color {
     public var b:Float;
     public var a:Float;
     
-    public function new( _r:Float = 1.0, _g:Float = 1.0, _b:Float = 1.0, _a:Float = 1.0 ) {
-        r = _r;
-        g = _g;
-        b = _b;
-        a = _a;
+    public function new( ?color : Color = null, _r:Float = 1.0, _g:Float = 1.0, _b:Float = 1.0, _a:Float = 1.0 ) {
+        set(color, _r, _g, _b, _a);
     }
 
-    public function set( ?color : Color = null, ?_r : Float, ?_g : Float, ?_b : Float, ?_a : Float ) : Color {
+    public function set( ?color : Color = null,
+                         ?_r : Float = -1, ?_g : Float = -1, ?_b : Float = -1, ?_a : Float = -1 ) : Color {
         if(color != null){
             this.r = color.r;
             this.g = color.g;
@@ -614,21 +562,12 @@ class Color {
             return this;
         }
 
-        var _setr = r;
-        var _setg = g;
-        var _setb = b;
-        var _seta = a;
-            
-            //assign new values
-        if(_r != null) _setr = _r;
-        if(_g != null) _setg = _g;
-        if(_b != null) _setb = _b;
-        if(_a != null) _seta = _a;
-
-        r = _setr;
-        g = _setg;
-        b = _setb;
-        a = _seta;
+        if(r != -1){
+            r = _r;
+            g = _g;
+            b = _b;
+            a = _a;
+        }
 
         return this;
     }
