@@ -1,5 +1,6 @@
 package particles;
 
+import de.polygonal.core.math.Vec2;
 import flash.geom.Rectangle;
 import flash.display.Bitmap;
 import flash.display.BitmapData;
@@ -216,6 +217,7 @@ class ParticleEmitter {
     public var start_size : PointFromRange;
     public var end_size   : PointFromRange;
     public var velocity   : FloatFromRange;
+    public var damping    : FloatFromRange;
     public var life       : FloatFromRange;
     
     public var rotation_value  : FloatFromRange;
@@ -259,12 +261,12 @@ class ParticleEmitter {
 
     public function apply(?x : Xml = null, _template:Dynamic) {
         if(x != null){
-            trace("x: "+x);
             emit_time = getF(x, "emitTime", 0.1);
             emit_count = getI(x, "emitCount", 1);
 
             direction = new FloatFromRange(x.elementsNamed("direction").next());
             velocity  = new FloatFromRange(x.elementsNamed("velocity").next());
+            damping   = new FloatFromRange(x.elementsNamed("damping").next());
             life = new FloatFromRange(x.elementsNamed("life").next());
             end_rotation = new FloatFromRange(x.elementsNamed("endRotation").next());
             var xmlRotation : Xml = x.elementsNamed("rotation").next();
@@ -409,6 +411,7 @@ class ParticleEmitter {
 
         particle.velocity.setTo(Math.cos( new_dir ) * new_velocity,
                                 Math.sin( new_dir ) * new_velocity);
+        particle.damping = damping.value;
         particle.acceleration.setTo(0, 0);
 
         particle.start_size.x = Math.floor(Math.max(0.0, start_size.x.value));
@@ -467,6 +470,9 @@ class ParticleEmitter {
                 current_particle.velocity.y
                     = current_particle.velocity.y + (current_particle.acceleration.y + gravity.y) * dt;
 
+                //TODO: damping
+
+
                 //updating position by velocity
                 current_particle.position.x
                     = current_particle.position.x + current_particle.velocity.x * dt;
@@ -517,6 +523,7 @@ class Particle {
 
     public var velocity     : Point;
     public var acceleration : Point;
+    public var damping      : Float;
 
     public var time_to_live : Float = 0;
     public var rotation     : Float = 0;
