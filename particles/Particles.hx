@@ -10,27 +10,29 @@ import flash.geom.Point;
 class ParticleSystem extends Sprite {
 
     public var active : Bool = false;
-    public var emitters : Map<String, ParticleEmitter>;
+    public var emitters : Array<ParticleEmitter>;
     public var pos : Point;
 
     public function new( _pos:Point) {
-
         super();
-
-        if(emitters == null) new Map<String, ParticleEmitter>();
+        emitters = [];
 
         pos = _pos;
     }
 
-    public function add_emitter(_name:String, _template:Dynamic) {
+    public function addEmitterFromXml(x : Xml){
+        emitters.push(new ParticleEmitter(this, x));
+    }
 
-        if(emitters == null) emitters = new Map<String, ParticleEmitter>();
+    public function loadFromXml(x : Xml){
+        if(emitters == null)
+            emitters = [];
 
-            //create the emitter instance
-        var _emitter = new ParticleEmitter(this, _template);
-            //store the reference of the emitter
-        emitters.set(_name, _emitter);
+        this.pos.x = Std.parseFloat(x.get("x"));
+        this.pos.y = Std.parseFloat(x.get("y"));
 
+        for(emitterDef in x.elementsNamed("particleEmitter"))
+            emitters.push(new ParticleEmitter(this, emitterDef));
     }
 
     public function emit(duration : Float = -1) {
@@ -114,9 +116,14 @@ class FloatFromRange {
         return (Math.random() * 2.0 - 1.0) * scatter + _value;
     }
 
-    public function new(value : Float, ?scatter : Float = 0.0){
-        this.value = value;
-        this.scatter = scatter;
+    public function new(?x : Xml = null, ?value : Float = 0.0, ?scatter : Float = 0.0){
+        if(x != null){
+            this.value = Std.parseFloat(x.get("value"));
+            this.scatter = (x.exists("scatter") ? Std.parseFloat(x.get("scatter")) : 0.0);
+        }else{
+            this.value = value;
+            this.scatter = scatter;
+        }
     }
 }
 
@@ -124,12 +131,17 @@ class PointFromRange {
     public var x : FloatFromRange;
     public var y : FloatFromRange;
 
-    public function new(value : Point, ?scatter : Point = null){
-        if(scatter == null)
-            scatter = new Point(0, 0);
+    public function new(?xml : Xml = null, ?value : Point=null, ?scatter : Point = null){
+        if(xml != null){
+            x = new FloatFromRange(xml.elementsNamed("x").next());
+            y = new FloatFromRange(xml.elementsNamed("y").next());
+        }else{
+            if(scatter == null)
+                scatter = new Point(0, 0);
 
-        x = new FloatFromRange(value.x, scatter.x);
-        y = new FloatFromRange(value.y, scatter.y);
+            x = new FloatFromRange(value.x, scatter.x);
+            y = new FloatFromRange(value.y, scatter.y);
+        }
     }
 }
 
@@ -152,17 +164,31 @@ class ColorFromRange {
         return returnValue;
     }
 
-    public function new(value : Color, ?scatter : Color = null){
+    public function new(?xml : Xml, ?value : Color = null, ?scatter : Color = null) {
         returnValue = new Color();
-        if(scatter == null)
-            scatter = new Color(0.0, 0.0, 0.0, 0.0);
-        this.scatter = scatter;
-        _value = value;
+        if(xml != null){
+            this._value
+                = new Color(Std.parseFloat(xml.get("r")) / 255.0,
+                            Std.parseFloat(xml.get("g")) / 255.0,
+                            Std.parseFloat(xml.get("b")) / 255.0,
+                            Std.parseFloat(xml.get("a")) / 255.0);
+            this.scatter
+                = new Color(Std.parseFloat(xml.get("rS")) / 255.0,
+                            Std.parseFloat(xml.get("gS")) / 255.0,
+                            Std.parseFloat(xml.get("bS")) / 255.0,
+                            Std.parseFloat(xml.get("aS")) / 255.0);
+        }else{
+            if(scatter == null)
+                scatter = new Color(0.0, 0.0, 0.0, 0.0);
+            this.scatter = scatter;
+            _value = value;
+        }
     }
 }
 
 class ParticleEmitter {
     public var particle_system : ParticleSystem;
+    public var name : String;
 
     public var active : Bool = true;
     public var emit_count : Int = 1;
@@ -210,8 +236,7 @@ class ParticleEmitter {
 
     var has_end_rotation : Bool = false;
 
-    public function new(_system:ParticleSystem, _template:Dynamic) {   
-
+    public function new(_system : ParticleSystem, ?x : Xml = null, ?_template : Dynamic = null) {
         template = _template;
         particle_system = _system;
 
@@ -221,71 +246,108 @@ class ParticleEmitter {
         emit_timer = 0;
             
         //apply defaults
-        apply(template);
+        apply(x, template);
     }
 
-    public function apply(_template:Dynamic) {
-        if(_template == null) _template = {};
+    private inline function getF(x : Xml, par : String, def : Float) : Float {
+        return x.exists(par) ? Std.parseFloat(x.get(par)) : def;
+    }
 
-        (_template.emit_time != null) ? 
-            emit_time = _template.emit_time : 
-            emit_time = 0.1;
+    private inline function getI(x : Xml, par : String, def : Int) : Int {
+        return x.exists(par) ? Std.parseInt(x.get(par)) : def;
+    }
 
-        (_template.emit_count != null) ? 
-            emit_count = _template.emit_count : 
-            emit_count = 1;
+    public function apply(?x : Xml = null, _template:Dynamic) {
+        if(x != null){
+            trace("x: "+x);
+            emit_time = getF(x, "emitTime", 0.1);
+            emit_count = getI(x, "emitCount", 1);
 
-        (_template.direction != null) ? 
-            direction = _template.direction : 
-            direction = new FloatFromRange(0.0);
+            direction = new FloatFromRange(x.elementsNamed("direction").next());
+            velocity  = new FloatFromRange(x.elementsNamed("velocity").next());
+            life = new FloatFromRange(x.elementsNamed("life").next());
+            end_rotation = new FloatFromRange(x.elementsNamed("endRotation").next());
+            var xmlRotation : Xml = x.elementsNamed("rotation").next();
+            zrotation = new FloatFromRange(xmlRotation);
+            rotation_offset = getF(xmlRotation, "offset", 0.0);
 
-        (_template.velocity != null) ?
-            velocity = _template.velocity :
-            velocity = new FloatFromRange(0.0);
+            emiterShape = new Rectangle(getF(x.elementsNamed("emitterShape").next(), "x", 0.0),
+                                        getF(x.elementsNamed("emitterShape").next(), "y", 0.0),
+                                        getF(x.elementsNamed("emitterShape").next(), "width", 0.0),
+                                        getF(x.elementsNamed("emitterShape").next(), "height", 0.0));
 
-        (_template.life != null) ?
-            life = _template.life : life = new FloatFromRange(1.0);
+            gravity = new Point(getF(x.elementsNamed("gravity").next(), "x", 0.0),
+                                getF(x.elementsNamed("gravity").next(), "y", 0.0));
 
-        (_template.rotation != null) ?
-            zrotation = _template.rotation : 
-            zrotation = new FloatFromRange(0.0);
+            start_size = new PointFromRange(x.elementsNamed("startSize").next());
+            end_size = new PointFromRange(x.elementsNamed("endSize").next());
 
-        (_template.rotation_offset != null) ?
-            rotation_offset = _template.rotation_offset :
-            rotation_offset = 0.0;
+            start_color = new ColorFromRange(x.elementsNamed("startColor").next());
+            end_color = new ColorFromRange(x.elementsNamed("endColor").next());
 
-        (_template.end_rotation != null) 
-            ? { end_rotation = _template.end_rotation;  has_end_rotation = true;  }
-            : { end_rotation = new FloatFromRange(0.0); has_end_rotation = false; }
+        }else{
+            if(_template == null) _template = {};
 
-        if(_template.emiter_shape != null)
-            emiterShape.setTo(particle_system.pos.x + _template.emiter_shape.x,
-                              particle_system.pos.y + _template.emiter_shape.y,
-                              _template.emiter_shape.width, _template.emiter_shape.height);
-        else
-            emiterShape.setTo(particle_system.pos.x, particle_system.pos.x,
-                              0, 0);
+            (_template.emit_time != null) ?
+                emit_time = _template.emit_time :
+                emit_time = 0.1;
 
-        (_template.gravity != null) ?
-            gravity = _template.gravity : 
-            gravity = new Point(0,-80);
+            (_template.emit_count != null) ?
+                emit_count = _template.emit_count :
+                emit_count = 1;
 
-        (_template.start_size != null) ?
-            start_size = _template.start_size : 
-            start_size = new PointFromRange(new Point(32, 32));
+            (_template.direction != null) ?
+                direction = _template.direction :
+                direction = new FloatFromRange(0.0);
 
-        (_template.end_size != null) ?
-            end_size = _template.end_size : 
-            end_size = new PointFromRange(new Point(128,128));
+            (_template.velocity != null) ?
+                velocity = _template.velocity :
+                velocity = new FloatFromRange(0.0);
 
-        (_template.start_color != null) ? 
-            start_color = _template.start_color :
-            start_color = new ColorFromRange(new Color(1,1,1,1));
+            (_template.life != null) ?
+                life = _template.life : life = new FloatFromRange(1.0);
 
-        (_template.end_color != null) ?
-            end_color = _template.end_color :
-            end_color = new ColorFromRange(new Color(0,0,0,0));
-    } //apply
+            (_template.rotation != null) ?
+                zrotation = _template.rotation :
+                zrotation = new FloatFromRange(0.0);
+
+            (_template.rotation_offset != null) ?
+                rotation_offset = _template.rotation_offset :
+                rotation_offset = 0.0;
+
+            (_template.end_rotation != null)
+                ? { end_rotation = _template.end_rotation;  has_end_rotation = true;  }
+                : { end_rotation = new FloatFromRange(0.0); has_end_rotation = false; }
+
+            if(_template.emiter_shape != null)
+                emiterShape.setTo(particle_system.pos.x + _template.emiter_shape.x,
+                                  particle_system.pos.y + _template.emiter_shape.y,
+                                  _template.emiter_shape.width, _template.emiter_shape.height);
+            else
+                emiterShape.setTo(particle_system.pos.x, particle_system.pos.x,
+                                  0, 0);
+
+            (_template.gravity != null) ?
+                gravity = _template.gravity :
+                gravity = new Point(0,-80);
+
+            (_template.start_size != null) ?
+                start_size = _template.start_size :
+                start_size = new PointFromRange(new Point(32, 32));
+
+            (_template.end_size != null) ?
+                end_size = _template.end_size :
+                end_size = new PointFromRange(new Point(128,128));
+
+            (_template.start_color != null) ?
+                start_color = _template.start_color :
+                start_color = new ColorFromRange(new Color(1,1,1,1));
+
+            (_template.end_color != null) ?
+                end_color = _template.end_color :
+                end_color = new ColorFromRange(new Color(0,0,0,0));
+        }
+    }
 
     public function destroy() {
         particles = null;
