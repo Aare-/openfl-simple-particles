@@ -13,11 +13,18 @@ class ParticleSystem extends Sprite {
     public var emitters : Array<ParticleEmitter>;
     public var pos : Point;
 
-    public function new( _pos:Point) {
+    public function new( ?xml : Xml = null, ?_pos : Point = null) {
         super();
         emitters = [];
+        pos = new Point();
 
-        pos = _pos;
+        if(xml != null){
+            for(emitter in xml.firstChild().elementsNamed("particleEmitter"))
+                addEmitterFromXml(emitter);
+        }else{
+            pos.x = _pos.x;
+            pos.y = _pos.y;
+        }
     }
 
     public function addEmitterFromXml(x : Xml){
@@ -35,11 +42,10 @@ class ParticleSystem extends Sprite {
             emitters.push(new ParticleEmitter(this, emitterDef));
     }
 
-    public function emit(duration : Float = -1) {
+    public function emit() {
         active = true;
-        for(emitter in emitters) {
-            emitter.emit(duration);
-        }
+        for(emitter in emitters)
+            emitter.emit();
     }
 
     public function stop() {
@@ -56,9 +62,11 @@ class ParticleSystem extends Sprite {
 
     public function update(dt : Float) {
         if(!active) return;
-        for(emitter in emitters)
+        active = false;
+        for(emitter in emitters){
             emitter.update(dt);
-
+            active = active || emitter.active;
+        }
     }
 
     //default - debug renderer

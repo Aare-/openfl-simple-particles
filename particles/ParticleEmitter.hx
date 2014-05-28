@@ -11,8 +11,6 @@ class ParticleEmitter {
     public var emit_count : Int = 1;
     public var particles : Array<Particle>;
 
-    public var elapsed_time : Float = 0;
-    public var duration : Float = -1;
     public var emission_rate : Float = 0;
     public var particle_index : Int = 0;
 
@@ -22,6 +20,7 @@ class ParticleEmitter {
     public var emiterShape : Rectangle;
     public var gravity : Point;
     public var emit_time : Float;
+    public var duration  : Float;
 
 /* direction of emmiter, in degrees*/
     public var direction       : FloatFromRange;
@@ -78,6 +77,7 @@ class ParticleEmitter {
     public function apply(?x : Xml = null, _template:Dynamic) {
         if(x != null){
             emit_time = getF(x, "emitTime", 0.1);
+            duration = getF(x, "duration", 0.1);
             emit_count = getI(x, "emitCount", 1);
 
             direction = new FloatFromRange(x.elementsNamed("direction").next());
@@ -90,9 +90,9 @@ class ParticleEmitter {
             rotation_offset = getF(xmlRotation, "offset", 0.0);
 
             emiterShape = new Rectangle(getF(x.elementsNamed("emitterShape").next(), "x", 0.0),
-            getF(x.elementsNamed("emitterShape").next(), "y", 0.0),
-            getF(x.elementsNamed("emitterShape").next(), "width", 0.0),
-            getF(x.elementsNamed("emitterShape").next(), "height", 0.0));
+                                        getF(x.elementsNamed("emitterShape").next(), "y", 0.0),
+                                        getF(x.elementsNamed("emitterShape").next(), "width", 0.0),
+                                        getF(x.elementsNamed("emitterShape").next(), "height", 0.0));
 
             gravity = new Point(getF(x.elementsNamed("gravity").next(), "x", 0.0),
             getF(x.elementsNamed("gravity").next(), "y", 0.0));
@@ -139,8 +139,8 @@ class ParticleEmitter {
 
             if(_template.emiter_shape != null)
                 emiterShape.setTo(particle_system.pos.x + _template.emiter_shape.x,
-                particle_system.pos.y + _template.emiter_shape.y,
-                _template.emiter_shape.width, _template.emiter_shape.height);
+                                  particle_system.pos.y + _template.emiter_shape.y,
+                                  _template.emiter_shape.width, _template.emiter_shape.height);
             else
                 emiterShape.setTo(particle_system.pos.x, particle_system.pos.x,
                 0, 0);
@@ -171,22 +171,23 @@ class ParticleEmitter {
         particles = null;
     }
 
-    public function emit(t : Float){
-        duration = t;
+    public function emit(){
         active = true;
         emit_timer = emit_time;
+        finish_time = duration;
 
-        if(duration != -1) {
-            finish_time = duration;
+        trace("emit! ft: "+finish_time+" timer: "+emit_timer);
+
+        if(emit_time != -1) {
+            finish_time = emit_time;
         }else{
             finish_time = -1;
         }
     }
 
     public function stop() {
-        active = false;
-        elapsed_time = 0;
         emit_timer = 0;
+        finish_time = -0.5;
     }
 
     private function spawn() {
@@ -219,8 +220,8 @@ class ParticleEmitter {
 
         particle.rotation = zrotation.value + rotation_offset;
 
-        particle.position.x = emiterShape.x + Math.random() * emiterShape.width;
-        particle.position.y = emiterShape.y + Math.random() * emiterShape.height;
+        particle.position.x = particle_system.pos.x + emiterShape.x + Math.random() * emiterShape.width;
+        particle.position.y = particle_system.pos.y + emiterShape.y + Math.random() * emiterShape.height;
 
         var new_dir = direction.value * ( Math.PI / 180 ); // convert to radians
         var new_velocity = velocity.value;
@@ -250,10 +251,9 @@ class ParticleEmitter {
             particle.rotation_delta  = ( end_rotation.value - particle.rotation ) / particle.time_to_live;
     } //init_particle
 
-    public function update(dt : Float) {
-
-        if( active ) { // && emission_rate > 0
-
+    public function update(dt : Float){
+        if(!active) return;
+        if( finish_time >= 0 || finish_time == -1) {
             emit_timer += dt;
 
             if( emit_timer >= emit_time ) {
@@ -267,54 +267,54 @@ class ParticleEmitter {
                 if(finish_time <= 0)
                     stop();
             }
+        }
 
-        } //if active and still emitting
-
-//update all active particles
+        //update all active particles
         if(beforeRender != null) beforeRender();
+        active = false;
         for(current_particle in particles) {
             if(!current_particle.active) continue;
 
-//die over time
+            active = true;
+            //die over time
             current_particle.time_to_live -= dt;
 
-// If the current particle is alive
+            // If the current particle is alive
             if( current_particle.time_to_live > 0 ) {
-//updating velocity by acceleration
+                //updating velocity by acceleration
                 current_particle.velocity.x
-                = current_particle.velocity.x + (current_particle.acceleration.x + gravity.x) * dt;
+                    = current_particle.velocity.x + (current_particle.acceleration.x + gravity.x) * dt;
                 current_particle.velocity.y
-                = current_particle.velocity.y + (current_particle.acceleration.y + gravity.y) * dt;
+                    = current_particle.velocity.y + (current_particle.acceleration.y + gravity.y) * dt;
 
-//TODO: damping
+                //TODO: damping
 
 
-//updating position by velocity
+                //updating position by velocity
                 current_particle.position.x
-                = current_particle.position.x + current_particle.velocity.x * dt;
+                    = current_particle.position.x + current_particle.velocity.x * dt;
                 current_particle.position.y
-                = current_particle.position.y + current_particle.velocity.y * dt;
+                    = current_particle.position.y + current_particle.velocity.y * dt;
 
-// update colours based on delta
+                // update colours based on delta
                 var r = current_particle.color.r += ( current_particle.color_delta.r * dt );
                 var g = current_particle.color.g += ( current_particle.color_delta.g * dt );
                 var b = current_particle.color.b += ( current_particle.color_delta.b * dt );
                 var a = current_particle.color.a += ( current_particle.color_delta.a * dt );
 
-//clamp colors
+                //clamp colors
                 if(r < 0) { r = 0; } if(g < 0) { g = 0; } if(b < 0) { b = 0; } if(a < 0) { a = 0; }
                 if(r > 1) { r = 1; } if(g > 1) { g = 1; } if(b > 1) { b = 1; } if(a > 1) { a = 1; }
 
-//updatying visuals
+                //updatying visuals
                 current_particle.start_size.x += ( current_particle.size_delta.x * dt );
                 current_particle.start_size.y += ( current_particle.size_delta.y * dt );
                 current_particle.rotation += ( current_particle.rotation_delta * dt );
 
                 if(renderParticle != null)
                     renderParticle(current_particle);
-            } else {
+            } else
                 current_particle.active = false;
-            }
         }
 
         if(afterRender != null) afterRender();
