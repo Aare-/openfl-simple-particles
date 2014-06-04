@@ -176,13 +176,10 @@ class ParticleEmitter {
         emit_timer = emit_time;
         finish_time = duration;
 
-        trace("emit! ft: "+finish_time+" timer: "+emit_timer);
-
-        if(emit_time != -1) {
+        if(emit_time != -1)
             finish_time = emit_time;
-        }else{
+        else
             finish_time = -1;
-        }
     }
 
     public function stop() {
