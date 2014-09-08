@@ -31,6 +31,15 @@ class ParticleSystem extends Sprite {
         emitters.push(new ParticleEmitter(this, x));
     }
 
+	public function getEmitterByName( name : String ) : ParticleEmitter {				
+		for (emit in emitters) {
+			if (emit.name == name)
+				return emit;
+		}
+		
+		return null;
+	}
+	
     public function loadFromXml(x : Xml){
         if(emitters == null)
             emitters = [];

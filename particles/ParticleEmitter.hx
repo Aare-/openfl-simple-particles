@@ -77,7 +77,9 @@ class ParticleEmitter {
     }
 
     public function apply(?x : Xml = null, _template:Dynamic) {
-        if(x != null){
+        if (x != null) {
+			name = x.get("name");
+			
             emit_time = getF(x, "emitTime", 0.1);
             duration = getF(x, "duration", 0.1);
             emit_count = getI(x, "emitCount", 1);
