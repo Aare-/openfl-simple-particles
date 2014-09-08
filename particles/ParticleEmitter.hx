@@ -274,7 +274,7 @@ class ParticleEmitter {
 
         if(has_end_rotation)
             particle.rotation_delta  = ( end_rotation.value - particle.rotation ) / particle.time_to_live;
-    } //init_particle
+    }
 
     public function update(dt : Float){
         if(!active) return;
