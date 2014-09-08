@@ -34,6 +34,8 @@ class ParticleEmitter {
     public var velocity   : FloatFromRange;
     public var damping    : FloatFromRange;
     public var life       : FloatFromRange;
+	public var squareSizeStart : Bool;
+	public var squareSizeEnd : Bool;
 
     public var rotation_value  : FloatFromRange;
     public var end_rotation    : FloatFromRange;
@@ -62,7 +64,7 @@ class ParticleEmitter {
 
         emit_timer = 0;
 
-//apply defaults
+		//apply defaults
         apply(x, template);
     }
 
@@ -97,8 +99,17 @@ class ParticleEmitter {
             gravity = new Point(getF(x.elementsNamed("gravity").next(), "x", 0.0),
             getF(x.elementsNamed("gravity").next(), "y", 0.0));
 
-            start_size = new PointFromRange(x.elementsNamed("startSize").next());
-            end_size = new PointFromRange(x.elementsNamed("endSize").next());
+			var startSizeXML = x.elementsNamed("startSize").next();
+			var endSizeXML = x.elementsNamed("endSize").next();
+			
+            start_size = new PointFromRange(startSizeXML);
+            end_size = new PointFromRange(endSizeXML);
+			squareSizeStart 
+				= startSizeXML.exists("square") ? 
+					(startSizeXML.get("square") == "true" ? true : false ) : false;
+			squareSizeEnd	
+				= endSizeXML.exists("square") ? 
+					(endSizeXML.get("square") == "true" ? true : false ) : false;
 
             start_color = new ColorFromRange(x.elementsNamed("startColor").next());
             end_color = new ColorFromRange(x.elementsNamed("endColor").next());
@@ -155,7 +166,10 @@ class ParticleEmitter {
 
             (_template.end_size != null) ?
             end_size = _template.end_size :
-            end_size = new PointFromRange(new Point(128,128));
+            end_size = new PointFromRange(new Point(128, 128));
+			
+			squareSizeStart = false;
+			squareSizeEnd = false;
 
             (_template.start_color != null) ?
             start_color = _template.start_color :
@@ -228,13 +242,25 @@ class ParticleEmitter {
         particle.damping = damping.value;
         particle.acceleration.setTo(0, 0);
 
-        particle.start_size.x = Math.floor(Math.max(0.0, start_size.x.value));
-        particle.start_size.y = Math.floor(Math.max(0.0, start_size.y.value));
+		if (squareSizeStart) {
+			particle.start_size.y = 
+			particle.start_size.x = Math.floor(Math.max(0.0, start_size.x.value));
+		} else {
+			particle.start_size.x = Math.floor(Math.max(0.0, start_size.x.value));
+			particle.start_size.y = Math.floor(Math.max(0.0, start_size.y.value));
+		}
 
         particle.time_to_live = life.value;
-
-        particle.size_delta.x = ( end_size.x.value - particle.start_size.x ) / particle.time_to_live;
-        particle.size_delta.y = ( end_size.y.value - particle.start_size.y ) / particle.time_to_live;
+		
+		if (squareSizeEnd) {
+			var deltaY : Float = end_size.x.value;
+			particle.size_delta.x = ( deltaY - particle.start_size.x ) / particle.time_to_live;
+			particle.size_delta.y = ( deltaY - particle.start_size.y ) / particle.time_to_live;
+		}else{
+			particle.size_delta.x = ( end_size.x.value - particle.start_size.x ) / particle.time_to_live;
+			particle.size_delta.y = ( end_size.y.value - particle.start_size.y ) / particle.time_to_live;
+		}
+		
 
         particle.color     = new Color( start_color.value );
         var end_color : Color =  new Color( end_color.value );
