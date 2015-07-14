@@ -40,8 +40,7 @@ class ParticleEmitter {
     public var rotation_value  : FloatFromRange;
     public var end_rotation    : FloatFromRange;
 
-    public var start_color : ColorFromRange;
-    public var end_color   : ColorFromRange;
+    public var colors : Array<Array<ColorFromRange>>;
 
 //rendering particles - inline this functions for best performance
     public var beforeRender   : Void -> Void;
@@ -113,8 +112,12 @@ class ParticleEmitter {
 				= endSizeXML.exists("square") ? 
 					(endSizeXML.get("square") == "true" ? true : false ) : false;
 
-            start_color = new ColorFromRange(x.elementsNamed("startColor").next());
-            end_color = new ColorFromRange(x.elementsNamed("endColor").next());
+            colors = [];
+            for(c in x.elementsNamed("color"))
+                colors.push([
+                    new ColorFromRange(c.elementsNamed("start").next()),
+                    new ColorFromRange(c.elementsNamed("end").next())
+                ]);
 
         }else{
             if(_template == null) _template = {};
@@ -173,13 +176,14 @@ class ParticleEmitter {
 			squareSizeStart = false;
 			squareSizeEnd = false;
 
-            (_template.start_color != null) ?
-            start_color = _template.start_color :
-            start_color = new ColorFromRange(new Color(1,1,1,1));
-
-            (_template.end_color != null) ?
-            end_color = _template.end_color :
-            end_color = new ColorFromRange(new Color(0,0,0,0));
+            if(_template.colors != null) {
+                colors = _template.colors;
+            } else {
+                colors = [
+                    [new ColorFromRange(new Color(1,1,1,1)),
+                     new ColorFromRange(new Color(0,0,0,0))]
+                ];
+            }
         }
     }
 
@@ -223,6 +227,7 @@ class ParticleEmitter {
         target.setTo( a.x*b.x, a.y*b.y );
         return target;
     }
+
     function multiply_point_with_float(target:Point, a:Point, b:Float) : Point {
         target.setTo( a.x*b, a.y*b );
         return target;
@@ -263,6 +268,10 @@ class ParticleEmitter {
 			particle.size_delta.y = ( end_size.y.value - particle.start_size.y ) / particle.time_to_live;
 		}
 		
+
+        var choosenColor : Int = Std.int(Math.floor(Math.random() * (colors.length - 0.0001)));
+        var start_color : ColorFromRange = colors[choosenColor][0];
+        var end_color : ColorFromRange = colors[choosenColor][1];
 
         particle.color     = new Color( start_color.value );
         var end_color : Color =  new Color( end_color.value );
@@ -312,8 +321,9 @@ class ParticleEmitter {
                 current_particle.velocity.y
                     = current_particle.velocity.y + (current_particle.acceleration.y + gravity.y) * dt;
 
-                //TODO: damping
-
+                // damping
+                current_particle.velocity.x -= current_particle.velocity.x * current_particle.damping;
+                current_particle.velocity.y -= current_particle.velocity.y * current_particle.damping;
 
                 //updating position by velocity
                 current_particle.position.x

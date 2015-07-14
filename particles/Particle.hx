@@ -58,6 +58,8 @@ class Particle {
 
         a.color_delta.set(b.color_delta);
         a.color.set(b.color);
+
+        a.damping = b.damping;
     }
 
     public static function swap(a : Particle, b : Particle){
