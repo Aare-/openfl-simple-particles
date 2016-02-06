@@ -124,7 +124,7 @@ class ParticleEmitter {
 
             (_template.emit_time != null) ?
             emit_time = _template.emit_time :
-            emit_time = 0.1;
+                emit_time = 0.1;
 
             (_template.emit_count != null) ?
             emit_count = _template.emit_count :
@@ -196,10 +196,10 @@ class ParticleEmitter {
         emit_timer = emit_time;
         finish_time = duration;
 
-        if(emit_time != -1)
-            finish_time = emit_time;
-        else
-            finish_time = -1;
+        //if(emit_time != -1)
+         //   finish_time = emit_time;
+        //else
+         //   finish_time = -1;
     }
 
     public function stop() {
@@ -290,8 +290,9 @@ class ParticleEmitter {
         if( finish_time >= 0 || finish_time == -1) {
             emit_timer += dt;
 
-            if( emit_timer >= emit_time ) {
-                emit_timer = 0;
+            if( emit_timer > emit_time ) {
+                emit_timer -= Math.max(0, emit_time);
+
                 for(i in 0 ... emit_count)
                     spawn();
             }
